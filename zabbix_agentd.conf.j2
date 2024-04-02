@@ -1,0 +1,21 @@
+# Configuration file for Zabbix agent
+# Managed by Ansible - modifications may be overwritten
+
+
+# Specifies the file path where the process ID (PID) of the Zabbix agent daemon will be stored.
+PidFile=/run/zabbix/zabbix_agentd.pid
+
+# Log file configuration
+LogFile={{ zabbix_log_file | default('/tmp/zabbix_agentd.log') }}
+
+# Configuration option for the log file size.
+LogFileSize=0
+
+# Server configuration
+Server={{ zabbix_server | default('127.0.0.1') }}
+
+# ServerActive configuration
+ServerActive={{ zabbix_server_active | default('') }}
+
+# Hostname configuration
+Hostname={{ zabbix_hostname | default(ansible_hostname) }}
