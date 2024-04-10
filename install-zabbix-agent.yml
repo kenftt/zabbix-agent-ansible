@@ -4,28 +4,35 @@
   become: yes
   vars_files:
     - secret.yml # ansible-vault create secret.yml
+
   tasks:
+
     - name: Add the Zabbix server in /etc/hosts
       lineinfile:
         path: /etc/hosts
         line: 192.168.56.109 zabbix-server
         state: present
+
     - name: Download Zabbix release package
       get_url:
         url: https://repo.zabbix.com/zabbix/6.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.0-4+ubuntu22.04_all.deb
         dest: /tmp/zabbix-release_6.0-4+ubuntu22.04_all.deb
+
     - name: Install Zabbix release package
       ansible.builtin.command:
         cmd: dpkg -i /tmp/zabbix-release_6.0-4+ubuntu22.04_all.deb
       args:
         creates: /etc/apt/sources.list.d/zabbix-release.list
+
     - name: Update package lists
       apt:
         update_cache: yes
+
     - name: Install Zabbix agent package
       apt:
         name: zabbix-agent
         state: present
+
     - name: Configure Zabbix agent
       template:
         src: zabbix_agentd.conf.j2
@@ -36,12 +43,14 @@
         zabbix_server_active: ""
         zabbix_hostname: "{{ inventory_hostname }}"
       notify: restart zabbix-agent
+
     - name: Verify Zabbix agent service is running
       service:
         name: zabbix-agent
         state: started
+        
   handlers:
-    - name: restart zabbix-agent
+    - name: Restart zabbix-agent
       systemd:
         name: zabbix-agent
         state: restarted

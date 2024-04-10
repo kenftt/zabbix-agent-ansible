@@ -1,0 +1,34 @@
+---
+- name: Install Zabbix Agent on Windows hosts
+  hosts: zabbix-agents-windows
+  # gather_facts: no
+  tasks:
+
+  - name: Test connectivity to Windows hosts
+    win_ping:
+
+  - name: Download Zabbix Agent installer
+    win_get_url:
+      url: "https://cdn.zabbix.com/zabbix/binaries/stable/6.4/6.4.13/zabbix_agent2_plugins-6.4.13-windows-amd64.msi"
+      dest: "C:\\tmp\\zabbix_agent2_plugins-6.4.13-windows-amd64.msi"
+
+  - name: Install Zabbix Agent
+    win_package:
+      path: "C:\\tmp\\zabbix_agent2_plugins-6.4.13-windows-amd64.msi"
+      state: present
+
+  - name: Configure Zabbix Agent
+    win_lineinfile:
+      path: 'C:\\Program Files\\Zabbix Agent\\zabbix_agentd.win.conf'
+      regexp: '^{{ item.regexp }}'
+      line: '{{ item.line }}'
+    with_items:
+      - { regexp: 'Server=', line: 'Server=192.168.56.109' }
+      - { regexp: 'ServerActive=', line: 'ServerActive=' }
+      - { regexp: 'Hostname=', line: 'Hostname=zabbix-host-win' }
+
+  - name: Ensure Zabbix Agent service is started and enabled
+    win_service:
+      name: "Zabbix Agent"
+      state: started
+      start_mode: auto

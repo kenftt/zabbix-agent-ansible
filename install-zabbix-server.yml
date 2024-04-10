@@ -1,0 +1,70 @@
+---
+- name: Install Zabbix on Ubuntu 22.04
+  hosts: zabbix_servers
+  become: true
+  vars:
+    db_root_password: "{{ vault_db_root_password }}"
+    zabbix_db_name: zabbix
+    zabbix_db_user: zabbix
+    zabbix_db_password: "{{ vault_zabbix_db_password }}"
+    zabbix_url: "http://host/zabbix"
+    php_timezone: "UTC"
+
+  tasks:
+    - name: Add Zabbix repository
+      ansible.builtin.apt_repository:
+        repo: deb http://repo.zabbix.com/zabbix/6.0/ubuntu/ {{ ansible_distribution_release }} main
+        state: present
+        filename: zabbix
+
+    - name: Install Zabbix 
+      ansible.builtin.apt:
+        name:
+          - zabbix-server-mysql
+          - zabbix-agent
+          - zabbix-frontend-php
+          - zabbix-apache-conf
+          - zabbix-sql-scripts
+        state: present
+        update_cache: yes
+
+    - name: Create Zabbix database
+      mysql_db:
+        name: "{{ zabbix_db_name }}"
+        state: present
+        login_password: "{{ db_root_password }}"
+        encoding: utf8mb4
+        collation: utf8mb4_bin
+
+    - name: Create Zabbix database user
+      mysql_user:
+        name: "{{ zabbix_db_user }}"
+        password: "{{ zabbix_db_password }}"
+        priv: "{{ zabbix_db_name }}.*:ALL"
+        state: present
+        login_password: "{{ db_root_password }}"
+
+    - name: Import Zabbix database schema
+      mysql_db:
+        name: "{{ zabbix_db_name }}"
+        state: import
+        target: /usr/share/doc/zabbix-sql-scripts/mysql/create.sql.gz
+        login_user: "{{ zabbix_db_user }}"
+        login_password: "{{ zabbix_db_password }}"
+
+    - name: Configure Zabbix server database connection
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^#?DBPassword='
+        line: "DBPassword={{ zabbix_db_password }}"
+        state: present
+
+    - name: Restart Zabbix server and agent
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+        enabled: yes
+      loop:
+        - zabbix-server
+        - zabbix-agent
+        - apache2
