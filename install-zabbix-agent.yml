@@ -4,13 +4,19 @@
   become: yes
   vars_files:
     - secret.yml # ansible-vault create secret.yml
+    - vars.yml
 
   tasks:
+    - name : Check if any other Zabbix server is already configured in /etc/hosts and deletes it
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^\s*.*zabbix.*$'
+        state: absent
 
     - name: Add the Zabbix server in /etc/hosts
       lineinfile:
         path: /etc/hosts
-        line: 192.168.56.109 zabbix-server
+        line: "{{ zabbix_server_ip }} {{ zabbix_server_hostname }}"
         state: present
 
     - name: Download Zabbix release package
@@ -39,16 +45,16 @@
         dest: /etc/zabbix/zabbix_agentd.conf
       vars:
         zabbix_log_file: /var/log/zabbix/zabbix_agentd.log
-        zabbix_server: zabbix-server
+        zabbix_server: "{{ zabbix_server_hostname }}"
         zabbix_server_active: ""
         zabbix_hostname: "{{ inventory_hostname }}"
-      notify: restart zabbix-agent
+      notify: Restart zabbix-agent
 
     - name: Verify Zabbix agent service is running
       service:
         name: zabbix-agent
         state: started
-        
+
   handlers:
     - name: Restart zabbix-agent
       systemd:
